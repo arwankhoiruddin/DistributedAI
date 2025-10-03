@@ -1,4 +1,3 @@
-Nah, ini baru makin seru. Jadi dalam repo tunggal, isinya ada **tiga komponen
 # Distributed Data Analysis Platform
 
 Repositori ini berisi **tiga komponen utama** untuk sistem analisis data terdistribusi:
