@@ -1,58 +1,69 @@
-
+Nah, ini baru makin seru. Jadi dalam repo tunggal, isinya ada **tiga komponen
 # Distributed Data Analysis Platform
 
-Platform ini memisahkan **antarmuka web publik** dengan **runner lokal** (aplikasi Python) yang melakukan pengolahan data.  
-Data tetap berada di dekat runner, sedangkan web hanya berfungsi sebagai interface. Komunikasi antara web dan runner dilakukan melalui API publik dengan sistem tugas (task queue).
+Repositori ini berisi **tiga komponen utama** untuk sistem analisis data terdistribusi:
+
+1. **WordPress Plugin** – antarmuka berbasis dashboard WordPress.  
+2. **API Server** – koordinator komunikasi antara plugin dan runner.  
+3. **Runner (Python App)** – aplikasi Python yang melakukan analisis data di mesin lokal.
+
+---
+
+## Struktur Repo
+
+```
+
+/wordpress-plugin/   → Plugin WordPress (dashboard UI)
+/api-server/         → API Server (FastAPI/Flask)
+/runner/             → Python runner untuk eksekusi analisis
+
+````
 
 ---
 
 ## Arsitektur
 
-- **Web (Public Interface):**
-  - Frontend untuk pengguna.
-  - Mengirim permintaan analisis atau filter data ke API publik.
-  - Menampilkan hasil yang dikirim balik oleh runner.
+- **WordPress Plugin**
+  - User login ke dashboard WordPress.
+  - Membuat task analisis dari menu admin.
+  - Task dikirim ke API server.
 
-- **API Server (Coordinator):**
-  - Menyimpan informasi runner yang terdaftar.
-  - Menerima permintaan proses dari web.
-  - Menyampaikan instruksi (task) kepada runner.
-  - Menyimpan hasil sementara sebelum dikirim ke web.
+- **API Server**
+  - Menyimpan task dari WordPress.
+  - Mengatur distribusi task ke runner.
+  - Menyediakan endpoint untuk hasil analisis.
+  - Autentikasi via API key.
 
-- **Runner (Local Python Application):**
-  - Berjalan di komputer lokal dengan akses ke data.
-  - Mendaftar ke API publik dengan ID unik.
-  - Secara periodik mengecek apakah ada task untuknya.
-  - Menjalankan task sesuai operation code (misal ambil data, filter, analisis).
-  - Mengirim balik hasil ke API.
+- **Runner**
+  - Registrasi ke API server dengan ID/token.
+  - Polling task yang tersedia untuknya.
+  - Eksekusi task (ambil data, filter, analisis).
+  - Kirim hasil kembali ke API server.
 
 ---
 
 ## Alur Proses
 
 1. **Registrasi Runner**
-   - Runner mendaftar ke API (`POST /register`) untuk mendapatkan ID/token.
-   - Runner mengirim heartbeat secara berkala (`/ping`).
+   - Runner `POST /register` ke API server untuk mendapatkan ID/token.
+   - Runner kirim heartbeat (`/ping`) secara berkala.
 
-2. **User Request**
-   - Pengguna web mengirim permintaan analisis → API server membuat task.
+2. **User Membuat Task**
+   - User login ke WordPress dashboard → menu **Data Analysis**.
+   - Plugin kirim task ke API server (`POST /task`).
 
-3. **Runner Polling**
-   - Runner memanggil endpoint `GET /tasks?runner_id=xxx` untuk mengambil task.
-   - API mengembalikan daftar task yang pending.
+3. **Runner Menangani Task**
+   - Runner polling `GET /tasks?runner_id=xxx`.
+   - Jalankan task sesuai `operation_code`.
+   - Kirim hasil balik ke API server (`POST /result`).
 
-4. **Runner Eksekusi**
-   - Runner menjalankan task sesuai operation code.
-   - Hasil dikirim balik dengan `POST /result`.
-
-5. **Web Display**
-   - Web membaca hasil task (`GET /result/{task_id}`) dan menampilkannya ke pengguna.
+4. **Plugin Menampilkan Hasil**
+   - Plugin baca hasil dengan `GET /result/{task_id}`.
+   - Dashboard menampilkan hasil ke user.
 
 ---
 
 ## Operation Codes
-
-Task dikontrol dengan kode proses sederhana:
 
 | Code | Deskripsi          |
 |------|--------------------|
@@ -61,38 +72,59 @@ Task dikontrol dengan kode proses sederhana:
 | 300  | Analisis model ML  |
 | 400  | Export laporan     |
 
-Runner melakukan dispatch berdasarkan kode ini.
-
 ---
 
 ## Teknologi
 
-- **Runner:** Python (FastAPI, Pandas, scikit-learn, dll.)
-- **API Server:** FastAPI / Flask / Node.js (bebas)
-- **Frontend:** React / Vue / Laravel
-- **Database:** PostgreSQL atau MySQL untuk task management
-- **Optional:** Message queue (Redis, RabbitMQ, Kafka) jika butuh skalabilitas tinggi
+- **WordPress Plugin**
+  - PHP (WordPress Settings API, Admin Menu, REST API Client)
+- **API Server**
+  - Python (FastAPI/Flask)
+  - Database: PostgreSQL/MySQL (untuk task & hasil)
+- **Runner**
+  - Python (Requests untuk komunikasi, Pandas/NumPy/scikit-learn untuk analitik)
 
 ---
 
-## Keamanan
+## Cara Menjalankan
 
-- Setiap runner menggunakan **token unik**.
-- Semua komunikasi harus lewat **HTTPS**.
-- Data hasil yang besar disimpan di storage terpisah (misalnya S3/MinIO) dan hanya link yang dikirim ke API.
+### 1. API Server
+```bash
+cd api-server
+pip install -r requirements.txt
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+````
+
+### 2. Runner
+
+```bash
+cd runner
+pip install -r requirements.txt
+python runner.py --server http://localhost:8000 --token <runner_token>
+```
+
+### 3. WordPress Plugin
+
+* Copy folder `wordpress-plugin` ke `wp-content/plugins/`
+* Aktifkan plugin melalui **WordPress Admin > Plugins**
+* Konfigurasi API server URL & API key di **Settings > Data Analysis**
 
 ---
 
 ## Roadmap
 
-- [ ] Implementasi API server (registrasi runner, task, result)
-- [ ] Implementasi runner dengan polling sederhana
-- [ ] Integrasi frontend web
-- [ ] Tambah dukungan WebSocket untuk komunikasi real-time
-- [ ] Tambah sistem autentikasi pengguna web
+* [ ] API server dasar (register, task, result)
+* [ ] Runner polling & eksekusi task sederhana
+* [ ] Plugin admin page untuk kirim task
+* [ ] Tabel status task di dashboard
+* [ ] Visualisasi hasil (tabel/grafik)
+* [ ] Notifikasi task selesai
+* [ ] Role-based access control di WordPress
 
 ---
 
 ## Lisensi
 
 MIT License
+
+```
