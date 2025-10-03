@@ -1,0 +1,91 @@
+/* Distributed Data Analysis - Admin Styles */
+
+.dda-create-task {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.dda-tasks-list {
+    margin-top: 30px;
+}
+
+.dda-status {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.dda-status-pending {
+    background-color: #f0f0f1;
+    color: #646970;
+}
+
+.dda-status-assigned {
+    background-color: #d5e5f5;
+    color: #2271b1;
+}
+
+.dda-status-completed {
+    background-color: #d5f5d9;
+    color: #00a32a;
+}
+
+.dda-status-failed {
+    background-color: #f5d5d5;
+    color: #d63638;
+}
+
+#dda-result-modal {
+    position: fixed;
+    z-index: 100000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.dda-result-content {
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    border-radius: 4px;
+    width: 60%;
+    max-width: 600px;
+    position: relative;
+}
+
+.dda-result-content h3 {
+    margin-top: 0;
+}
+
+#dda-result-data {
+    background: #f0f0f1;
+    padding: 15px;
+    border-radius: 3px;
+    margin: 15px 0;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.dda-close-modal {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.dda-close-modal:hover,
+.dda-close-modal:focus {
+    color: #000;
+    text-decoration: none;
+}
