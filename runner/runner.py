@@ -12,11 +12,19 @@ import json
 
 
 class Runner:
-    def __init__(self, server_url, poll_interval=5, retry_interval=10, max_retries=None):
+    # Class constants for default behavior
+    DEFAULT_MAX_SUBMIT_RETRIES = 3
+    DEFAULT_SUBMIT_RETRY_DELAY = 2
+    DEFAULT_MAX_CONSECUTIVE_ERRORS = 5
+    
+    def __init__(self, server_url, poll_interval=5, retry_interval=10, max_retries=None,
+                 max_submit_retries=None, max_consecutive_errors=None):
         self.server_url = server_url.rstrip('/')
         self.poll_interval = poll_interval
         self.retry_interval = retry_interval
         self.max_retries = max_retries
+        self.max_submit_retries = max_submit_retries or self.DEFAULT_MAX_SUBMIT_RETRIES
+        self.max_consecutive_errors = max_consecutive_errors or self.DEFAULT_MAX_CONSECUTIVE_ERRORS
         self.runner_id = None
         
     def register(self):
@@ -71,10 +79,9 @@ class Runner:
     
     def submit_result(self, task_id, result_data):
         """Submit task result to API server with retry logic"""
-        max_submit_retries = 3
-        retry_delay = 2
+        retry_delay = self.DEFAULT_SUBMIT_RETRY_DELAY
         
-        for attempt in range(1, max_submit_retries + 1):
+        for attempt in range(1, self.max_submit_retries + 1):
             try:
                 response = requests.post(
                     f"{self.server_url}/result",
@@ -90,13 +97,13 @@ class Runner:
                 print(f"  ✓ Result submitted successfully")
                 return True
             except Exception as e:
-                if attempt < max_submit_retries:
-                    print(f"  ✗ Failed to submit result (attempt {attempt}/{max_submit_retries}): {e}")
+                if attempt < self.max_submit_retries:
+                    print(f"  ✗ Failed to submit result (attempt {attempt}/{self.max_submit_retries}): {e}")
                     print(f"    Retrying in {retry_delay} seconds...")
                     time.sleep(retry_delay)
                     retry_delay *= 2  # Exponential backoff
                 else:
-                    print(f"  ✗ Failed to submit result after {max_submit_retries} attempts: {e}")
+                    print(f"  ✗ Failed to submit result after {self.max_submit_retries} attempts: {e}")
                     print(f"    WARNING: Result for task {task_id} may be lost!")
                     return False
     
@@ -142,7 +149,6 @@ class Runner:
         
         try:
             consecutive_errors = 0
-            max_consecutive_errors = 5
             
             while True:
                 # Poll for tasks
@@ -160,8 +166,8 @@ class Runner:
                     self.submit_result(task_id, result)
                 elif task is None:  # Error occurred
                     consecutive_errors += 1
-                    print(f"  (Error count: {consecutive_errors}/{max_consecutive_errors})")
-                    if consecutive_errors >= max_consecutive_errors:
+                    print(f"  (Error count: {consecutive_errors}/{self.max_consecutive_errors})")
+                    if consecutive_errors >= self.max_consecutive_errors:
                         print(f"\n✗ Too many consecutive errors. Attempting to re-register...")
                         if not self.register():
                             print("Failed to re-register. Exiting.")
@@ -207,10 +213,29 @@ def main():
         default=None,
         help='Maximum number of registration retry attempts (default: unlimited)'
     )
+    parser.add_argument(
+        '--max-submit-retries',
+        type=int,
+        default=None,
+        help='Maximum number of result submission retry attempts (default: 3)'
+    )
+    parser.add_argument(
+        '--max-consecutive-errors',
+        type=int,
+        default=None,
+        help='Maximum consecutive polling errors before re-registration (default: 5)'
+    )
     
     args = parser.parse_args()
     
-    runner = Runner(args.server, args.interval, args.retry_interval, args.max_retries)
+    runner = Runner(
+        args.server,
+        args.interval,
+        args.retry_interval,
+        args.max_retries,
+        args.max_submit_retries,
+        args.max_consecutive_errors
+    )
     runner.run()
 
 
