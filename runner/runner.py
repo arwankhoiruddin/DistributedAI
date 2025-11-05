@@ -70,23 +70,35 @@ class Runner:
         return result
     
     def submit_result(self, task_id, result_data):
-        """Submit task result to API server"""
-        try:
-            response = requests.post(
-                f"{self.server_url}/result",
-                json={
-                    "task_id": task_id,
-                    "runner_id": self.runner_id,
-                    "result_data": result_data,
-                    "status": "completed"
-                }
-            )
-            response.raise_for_status()
-            print(f"  ✓ Result submitted successfully")
-            return True
-        except Exception as e:
-            print(f"  ✗ Failed to submit result: {e}")
-            return False
+        """Submit task result to API server with retry logic"""
+        max_submit_retries = 3
+        retry_delay = 2
+        
+        for attempt in range(1, max_submit_retries + 1):
+            try:
+                response = requests.post(
+                    f"{self.server_url}/result",
+                    json={
+                        "task_id": task_id,
+                        "runner_id": self.runner_id,
+                        "result_data": result_data,
+                        "status": "completed"
+                    },
+                    timeout=10
+                )
+                response.raise_for_status()
+                print(f"  ✓ Result submitted successfully")
+                return True
+            except Exception as e:
+                if attempt < max_submit_retries:
+                    print(f"  ✗ Failed to submit result (attempt {attempt}/{max_submit_retries}): {e}")
+                    print(f"    Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    print(f"  ✗ Failed to submit result after {max_submit_retries} attempts: {e}")
+                    print(f"    WARNING: Result for task {task_id} may be lost!")
+                    return False
     
     def poll_tasks(self):
         """Poll for available tasks
