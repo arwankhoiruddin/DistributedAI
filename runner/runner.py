@@ -13,6 +13,8 @@ import json
 
 class Runner:
     # Class constants for default behavior
+    DEFAULT_REQUEST_TIMEOUT = 10  # seconds
+    DEFAULT_MAX_RETRY_DELAY = 60  # seconds
     DEFAULT_MAX_SUBMIT_RETRIES = 3
     DEFAULT_SUBMIT_RETRY_DELAY = 2
     DEFAULT_MAX_CONSECUTIVE_ERRORS = 5
@@ -37,7 +39,7 @@ class Runner:
                 response = requests.post(
                     f"{self.server_url}/register",
                     json={"name": "Python Runner"},
-                    timeout=10
+                    timeout=self.DEFAULT_REQUEST_TIMEOUT
                 )
                 response.raise_for_status()
                 data = response.json()
@@ -54,8 +56,8 @@ class Runner:
                 print(f"  Retrying in {retry_delay} seconds...")
                 time.sleep(retry_delay)
                 
-                # Exponential backoff with max 60 seconds
-                retry_delay = min(retry_delay * 1.5, 60)
+                # Exponential backoff with max delay
+                retry_delay = min(retry_delay * 1.5, self.DEFAULT_MAX_RETRY_DELAY)
     
     def execute_task(self, task):
         """Execute a task based on operation code"""
@@ -81,7 +83,7 @@ class Runner:
         """Submit task result to API server with retry logic"""
         retry_delay = self.DEFAULT_SUBMIT_RETRY_DELAY
         
-        for attempt in range(1, self.max_submit_retries + 1):
+        for attempt in range(self.max_submit_retries):
             try:
                 response = requests.post(
                     f"{self.server_url}/result",
@@ -91,14 +93,14 @@ class Runner:
                         "result_data": result_data,
                         "status": "completed"
                     },
-                    timeout=10
+                    timeout=self.DEFAULT_REQUEST_TIMEOUT
                 )
                 response.raise_for_status()
                 print(f"  ✓ Result submitted successfully")
                 return True
             except Exception as e:
-                if attempt < self.max_submit_retries:
-                    print(f"  ✗ Failed to submit result (attempt {attempt}/{self.max_submit_retries}): {e}")
+                if attempt < self.max_submit_retries - 1:
+                    print(f"  ✗ Failed to submit result (attempt {attempt + 1}/{self.max_submit_retries}): {e}")
                     print(f"    Retrying in {retry_delay} seconds...")
                     time.sleep(retry_delay)
                     retry_delay *= 2  # Exponential backoff
@@ -118,7 +120,7 @@ class Runner:
             response = requests.get(
                 f"{self.server_url}/tasks",
                 params={"runner_id": self.runner_id},
-                timeout=10
+                timeout=self.DEFAULT_REQUEST_TIMEOUT
             )
             response.raise_for_status()
             data = response.json()
